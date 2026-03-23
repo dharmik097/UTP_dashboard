@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>United Truck Parts — Sales Dashboard</title>
+    <meta name="description" content="Live sales dashboard for United Truck Parts">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --text: #f1f5f9;
+            --text-dim: #94a3b8;
+            --text-muted: #64748b;
+            --blue: #3b82f6;
+            --blue-glow: rgba(59, 130, 246, 0.25);
+            --green: #22c55e;
+            --green-glow: rgba(34, 197, 94, 0.2);
+            --orange: #f97316;
+            --orange-glow: rgba(249, 115, 22, 0.2);
+            --red: #ef4444;
+            --border: #334155;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text);
+            min-height: 100vh; overflow-x: hidden;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 28px;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 14px;
+        }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .logo {
+            width: 46px; height: 46px;
+            background: linear-gradient(135deg, var(--blue), #6366f1);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 800; color: white;
+        }
+        .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+        .header .subtitle { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+        .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 9px 18px; border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 600;
+            cursor: pointer; border: none; transition: all 0.2s;
+        }
+        .btn-primary { background: var(--blue); color: white; box-shadow: 0 0 20px var(--blue-glow); }
+        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-green { background: var(--green); color: white; box-shadow: 0 0 20px var(--green-glow); }
+        .btn-green:hover { background: #16a34a; transform: translateY(-1px); }
+        .btn-outline { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+        .btn-outline:hover { border-color: var(--text-dim); color: var(--text); }
+
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+        .status-dot.offline { background: var(--text-muted); }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .last-updated { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+
+        /* ===== CONTAINER ===== */
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+        /* ===== KPI CARDS ===== */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px; margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 26px; border: 1px solid var(--border);
+            transition: all 0.3s; position: relative; overflow: hidden;
+        }
+        .kpi-card:hover { border-color: var(--text-muted); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+        .kpi-card.goal::before { background: linear-gradient(90deg, var(--blue), #6366f1); }
+        .kpi-card.current::before { background: linear-gradient(90deg, var(--green), #10b981); }
+        .kpi-card.lastyear::before { background: linear-gradient(90deg, var(--orange), #eab308); }
+
+        .kpi-icon {
+            width: 42px; height: 42px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; margin-bottom: 14px;
+        }
+        .kpi-card.goal .kpi-icon { background: var(--blue-glow); }
+        .kpi-card.current .kpi-icon { background: var(--green-glow); }
+        .kpi-card.lastyear .kpi-icon { background: var(--orange-glow); }
+
+        .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 6px; }
+        .kpi-value { font-size: 34px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px; line-height: 1; }
+        .kpi-card.goal .kpi-value { color: var(--blue); }
+        .kpi-card.current .kpi-value { color: var(--green); }
+        .kpi-card.lastyear .kpi-value { color: var(--orange); }
+        .kpi-detail { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+        .kpi-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-top: 6px; }
+        .badge-green { background: var(--green-glow); color: var(--green); }
+        .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+        .badge-blue { background: var(--blue-glow); color: var(--blue); }
+
+        /* ===== PROGRESS BAR ===== */
+        .progress-section {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 22px 26px; border: 1px solid var(--border); margin-bottom: 24px;
+        }
+        .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .progress-title { font-size: 14px; font-weight: 600; }
+        .progress-pct { font-size: 22px; font-weight: 800; color: var(--green); }
+        .progress-bar-bg { height: 14px; background: #0f172a; border-radius: 10px; overflow: hidden; }
+        .progress-bar-fill {
+            height: 100%; border-radius: 10px;
+            background: linear-gradient(90deg, var(--green), #10b981);
+            transition: width 1s ease; position: relative;
+        }
+        .progress-bar-fill::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        .progress-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-muted); }
+
+        /* ===== CHART ===== */
+        .chart-card {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 22px 26px; border: 1px solid var(--border); margin-bottom: 24px;
+        }
+        .chart-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 18px; }
+        .chart-card canvas { max-height: 280px; }
+
+        /* ===== LOADING ===== */
+        .loading-state {
+            text-align: center; padding: 80px 20px;
+        }
+        .spinner {
+            width: 48px; height: 48px; border: 4px solid var(--border);
+            border-top-color: var(--blue); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-state h2 { font-size: 18px; margin-bottom: 6px; }
+        .loading-state p { color: var(--text-dim); font-size: 14px; }
+
+        /* ===== ERROR STATE ===== */
+        .error-state {
+            text-align: center; padding: 60px 20px;
+            background: var(--bg-card); border-radius: var(--radius);
+            border: 1px solid rgba(239,68,68,0.3);
+        }
+        .error-state .icon { font-size: 48px; margin-bottom: 16px; }
+        .error-state h2 { font-size: 18px; margin-bottom: 8px; color: var(--red); }
+        .error-state p { color: var(--text-dim); font-size: 14px; margin-bottom: 20px; line-height: 1.7; }
+        .error-state code { background: var(--bg); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+
+        /* ===== SETUP MODAL ===== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); display: none;
+            align-items: center; justify-content: center;
+            z-index: 2000; backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--bg-card); border-radius: var(--radius);
+            border: 1px solid var(--border); padding: 28px;
+            width: 520px; max-width: 92vw; max-height: 90vh; overflow-y: auto;
+        }
+        .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+        .modal .modal-desc { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.6; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block; font-size: 11px; font-weight: 600;
+            color: var(--text-dim); text-transform: uppercase;
+            letter-spacing: 0.5px; margin-bottom: 6px;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 10px 14px;
+            border-radius: var(--radius-sm); border: 1px solid var(--border);
+            background: var(--bg); color: var(--text);
+            font-size: 13px; font-family: inherit;
+        }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--blue); }
+        .form-group .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+        .form-group textarea { resize: vertical; min-height: 60px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+        .step-number {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: var(--blue); color: white;
+            font-size: 12px; font-weight: 700; margin-right: 8px;
+        }
+        .setup-steps { margin: 16px 0; }
+        .setup-step { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+
+        /* ===== DRAG & DROP ===== */
+        .drop-zone {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.92); display: none;
+            align-items: center; justify-content: center;
+            z-index: 1000; backdrop-filter: blur(8px);
+        }
+        .drop-zone.active { display: flex; }
+        .drop-zone-inner {
+            border: 3px dashed var(--blue); border-radius: 24px;
+            padding: 60px 80px; text-align: center;
+            background: rgba(59, 130, 246, 0.06);
+        }
+        .drop-zone-inner .icon { font-size: 48px; margin-bottom: 14px; }
+        .drop-zone-inner h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+        .drop-zone-inner p { color: var(--text-dim); font-size: 13px; }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed; bottom: 30px; right: 30px;
+            background: var(--green); color: white;
+            padding: 14px 24px; border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 600;
+            box-shadow: 0 8px 30px rgba(34,197,94,0.3);
+            transform: translateY(100px); opacity: 0;
+            transition: all 0.4s; z-index: 3000;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        .footer { text-align: center; padding: 20px; font-size: 11px; color: var(--text-muted); }
+        #fileInput { display: none; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+            .header { padding: 14px 16px; }
+            .container { padding: 16px 12px; }
+            .kpi-value { font-size: 28px; }
+        }
+        @media (max-width: 600px) {
+            .header h1 { font-size: 17px; }
+            .header-right { width: 100%; justify-content: flex-end; }
+            .kpi-value { font-size: 24px; }
+            .btn { padding: 8px 12px; font-size: 12px; }
+            .drop-zone-inner { padding: 40px 24px; }
+            .modal { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================
+     CONFIGURATION — Edit these values to connect your Google Sheets
+     ============================================================ -->
+<script>
+// %%CONFIG_START%%
+const CONFIG = {
+    // Google Sheets "Publish to web" CSV links
+    currentMonthURL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiltmey8ShkHWZ1A2ryXEkzYn3twTp2A2oj6712YMxx_RyykcYN4lELnQYDcxbtC4saEz5VFNQc3RA/pub?output=csv",
+    lastYearURL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQYCTaMhWtfJfMOo75LewavSZKg0ZZf_5-EA_a_yxW2M97iMmhkKHFCpgS5b8tTiSwqn9XQn9L1NWvu/pub?output=csv",
+
+    // Dashboard settings
+    dailyGoal: 10000,
+    currentMonth: new Date().getMonth() + 1,
+    currentYear: new Date().getFullYear(),
+
+    // Auto-refresh interval in minutes (0 = no auto-refresh)
+    autoRefreshMinutes: 5,
+};
+// %%CONFIG_END%%
+</script>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-left">
+        <div class="logo">UT</div>
+        <div>
+            <h1>United Truck Parts</h1>
+            <div class="subtitle">Sales Dashboard</div>
+        </div>
+    </div>
+    <div class="header-right">
+        <div class="last-updated">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="lastUpdated">Loading...</span>
+        </div>
+        <button class="btn btn-outline" onclick="openSettings()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            Settings
+        </button>
+        <button class="btn btn-green" onclick="refreshData()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Refresh
+        </button>
+        <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            CSV
+        </button>
+        <input type="file" id="fileInput" accept=".csv" multiple onchange="handleFileSelect(event)">
+    </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="container" id="mainContent">
+    <!-- Loading state -->
+    <div id="loadingState" style="display:none;">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <h2>Fetching live data...</h2>
+            <p>Pulling latest sales from Google Sheets</p>
+        </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="errorState" style="display:none;"></div>
+
+    <!-- Dashboard content -->
+    <div id="dashboardContent" style="display: none;">
+        <div class="kpi-grid">
+            <div class="kpi-card goal">
+                <div class="kpi-icon">🎯</div>
+                <div class="kpi-label" id="goalLabel">Monthly Goal</div>
+                <div class="kpi-value" id="goalValue">$0</div>
+                <div class="kpi-detail" id="goalDetail">$1,000/day</div>
+            </div>
+            <div class="kpi-card current">
+                <div class="kpi-icon">📈</div>
+                <div class="kpi-label" id="currentLabel">This Month</div>
+                <div class="kpi-value" id="currentValue">$0</div>
+                <div class="kpi-detail" id="currentDetail"></div>
+            </div>
+            <div class="kpi-card lastyear">
+                <div class="kpi-icon">📊</div>
+                <div class="kpi-label" id="lastYearLabel">Same Month Last Year</div>
+                <div class="kpi-value" id="lastYearValue">$0</div>
+                <div class="kpi-detail" id="lastYearDetail"></div>
+            </div>
+        </div>
+
+        <div class="progress-section">
+            <div class="progress-header">
+                <span class="progress-title">Progress Toward Monthly Goal</span>
+                <span class="progress-pct" id="progressPct">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar" style="width: 0%;"></div>
+            </div>
+            <div class="progress-labels">
+                <span>$0</span>
+                <span id="goalMarker">Goal: $0</span>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>Daily Sales — Current Month</h3>
+            <canvas id="dailyChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- DRAG & DROP OVERLAY -->
+<div class="drop-zone" id="dropZone">
+    <div class="drop-zone-inner">
+        <div class="icon">📁</div>
+        <h2>Drop CSV Files Here</h2>
+        <p>Current month file & full year file</p>
+    </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+        <h2>Dashboard Settings</h2>
+        <div class="modal-desc">Connect your Google Sheets to load data automatically. Follow the setup steps below.</div>
+
+        <div class="setup-steps">
+            <div class="setup-step"><span class="step-number">1</span><span>Open your CSV in <strong>Google Sheets</strong></span></div>
+            <div class="setup-step"><span class="step-number">2</span><span>Go to <strong>File → Share → Publish to web</strong></span></div>
+            <div class="setup-step"><span class="step-number">3</span><span>Choose <strong>Sheet1</strong> and format <strong>CSV</strong>, then click Publish</span></div>
+            <div class="setup-step"><span class="step-number">4</span><span>Copy the URL and paste it below</span></div>
+        </div>
+
+        <div class="form-group">
+            <label>Current Month Sheet URL</label>
+            <input type="url" id="settingCurrentURL" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+            <div class="hint">The sheet with daily sales data (has "Day" column)</div>
+        </div>
+        <div class="form-group">
+            <label>Last Year / Full Year Sheet URL</label>
+            <input type="url" id="settingLastYearURL" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+            <div class="hint">The sheet with monthly sales data (has "Month" column)</div>
+        </div>
+
+        <hr style="border-color: var(--border); margin: 20px 0;">
+
+        <div class="form-group">
+            <label>Daily Goal ($)</label>
+            <input type="number" id="settingGoal" value="1000" min="0" step="100">
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <div class="form-group" style="flex:1;">
+                <label>Month (1-12)</label>
+                <input type="number" id="settingMonth" min="1" max="12">
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>Year</label>
+                <input type="number" id="settingYear" min="2020" max="2030">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Auto-refresh (minutes, 0 = off)</label>
+            <input type="number" id="settingRefresh" value="5" min="0" max="60">
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeSettings()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<div class="footer">United Truck Parts &mdash; Live Sales Dashboard &mdash; Auto-refreshes from Google Sheets</div>
+
+<script>
+// ===== STATE =====
+let state = {
+    dailyGoal: CONFIG.dailyGoal || 1000,
+    currentMonth: CONFIG.currentMonth || (new Date().getMonth() + 1),
+    currentYear: CONFIG.currentYear || new Date().getFullYear(),
+    currentMonthData: null,
+    lastYearData: null,
+    isLive: false,
+};
+let dailyChart = null;
+let refreshTimer = null;
+
+// ===== HELPERS =====
+const MONTH_NAMES = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+function daysInMonth(m, y) { return new Date(y, m, 0).getDate(); }
+function fmt(n) {
+    if (n >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+    if (n >= 1000) return '$' + (n/1000).toFixed(1) + 'K';
+    return '$' + n.toFixed(0);
+}
+function fmtFull(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+// ===== CSV PARSER =====
+function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const headers = parseCSVLine(lines[0]);
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const vals = parseCSVLine(lines[i]);
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = vals[idx]; });
+        rows.push(row);
+    }
+    return { headers, rows };
+}
+function parseCSVLine(line) {
+    const result = []; let current = ''; let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (inQuotes) {
+            if (c === '"') { if (i+1 < line.length && line[i+1] === '"') { current += '"'; i++; } else { inQuotes = false; } }
+            else { current += c; }
+        } else {
+            if (c === '"') { inQuotes = true; }
+            else if (c === ',') { result.push(current.trim()); current = ''; }
+            else { current += c; }
+        }
+    }
+    result.push(current.trim());
+    return result;
+}
+
+// ===== FETCH FROM GOOGLE SHEETS =====
+async function fetchFromSheets() {
+    const currentURL = CONFIG.currentMonthURL;
+    const lastYearURL = CONFIG.lastYearURL;
+
+    if (!currentURL && !lastYearURL) {
+        showSetupNeeded();
+        return false;
+    }
+
+    showLoading();
+
+    try {
+        const results = await Promise.all([
+            currentURL ? fetch(currentURL).then(r => { if (!r.ok) throw new Error('Current month: ' + r.status); return r.text(); }) : Promise.resolve(null),
+            lastYearURL ? fetch(lastYearURL).then(r => { if (!r.ok) throw new Error('Last year: ' + r.status); return r.text(); }) : Promise.resolve(null),
+        ]);
+
+        if (results[0]) state.currentMonthData = parseCSV(results[0]);
+        if (results[1]) state.lastYearData = parseCSV(results[1]);
+
+        state.isLive = true;
+        renderDashboard();
+        return true;
+    } catch (err) {
+        showError(err.message);
+        return false;
+    }
+}
+
+function showLoading() {
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('dashboardContent').style.display = 'none';
+    document.getElementById('errorState').style.display = 'none';
+}
+
+function showError(msg) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('dashboardContent').style.display = 'none';
+    const el = document.getElementById('errorState');
+    el.style.display = 'block';
+    el.innerHTML = `<div class="error-state">
+        <div class="icon">⚠️</div>
+        <h2>Could not load data</h2>
+        <p>${msg}<br><br>Check your Google Sheets URLs in Settings, and make sure the sheets are published to the web.</p>
+        <button class="btn btn-primary" onclick="openSettings()">Open Settings</button>
+        <button class="btn btn-outline" style="margin-left:8px;" onclick="document.getElementById('fileInput').click()">Load CSV files instead</button>
+    </div>`;
+}
+
+function showSetupNeeded() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('dashboardContent').style.display = 'none';
+    const el = document.getElementById('errorState');
+    el.style.display = 'block';
+    el.innerHTML = `<div class="error-state" style="border-color: var(--border);">
+        <div class="icon">🔗</div>
+        <h2>Connect Your Google Sheets</h2>
+        <p>Set up your Google Sheets URLs in Settings to load data automatically.<br>Or drop CSV files onto this page for a quick view.</p>
+        <button class="btn btn-primary" onclick="openSettings()">Open Settings</button>
+        <button class="btn btn-outline" style="margin-left:8px;" onclick="document.getElementById('fileInput').click()">Load CSV files</button>
+    </div>`;
+}
+
+async function refreshData() {
+    const success = await fetchFromSheets();
+    if (success) showToast('Data refreshed from Google Sheets!');
+}
+
+// ===== LOCAL FILE HANDLING =====
+function handleFiles(files) {
+    const fileArray = Array.from(files).filter(f => f.name.endsWith('.csv'));
+    if (fileArray.length === 0) { showToast('Please drop CSV files', true); return; }
+    let loaded = 0;
+    fileArray.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = parseCSV(e.target.result);
+            if (data.headers.includes('Day')) state.currentMonthData = data;
+            else if (data.headers.includes('Month')) state.lastYearData = data;
+            loaded++;
+            if (loaded === fileArray.length) {
+                state.isLive = false;
+                renderDashboard();
+                showToast('Dashboard updated from files!');
+            }
+        };
+        reader.readAsText(file);
+    });
+}
+function handleFileSelect(event) { handleFiles(event.target.files); }
+
+// Drag & drop
+let dragCounter = 0;
+document.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; document.getElementById('dropZone').classList.add('active'); });
+document.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter <= 0) { document.getElementById('dropZone').classList.remove('active'); dragCounter = 0; } });
+document.addEventListener('dragover', (e) => { e.preventDefault(); });
+document.addEventListener('drop', (e) => { e.preventDefault(); dragCounter = 0; document.getElementById('dropZone').classList.remove('active'); handleFiles(e.dataTransfer.files); });
+
+// ===== RENDER DASHBOARD =====
+function renderDashboard() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'none';
+    document.getElementById('dashboardContent').style.display = 'block';
+
+    const m = state.currentMonth;
+    const y = state.currentYear;
+    const days = daysInMonth(m, y);
+    const monthName = MONTH_NAMES[m];
+    const goal = state.dailyGoal * days;
+
+    // Status
+    const dot = document.getElementById('statusDot');
+    dot.className = state.isLive ? 'status-dot live' : 'status-dot offline';
+    document.getElementById('lastUpdated').innerHTML = (state.isLive ? '<span class="status-dot live"></span> ' : '') + 'Updated: ' + new Date().toLocaleTimeString();
+
+    // Goal card
+    document.getElementById('goalLabel').textContent = `Monthly Goal — ${monthName} ${y}`;
+    document.getElementById('goalValue').textContent = fmtFull(goal);
+    document.getElementById('goalDetail').textContent = `$${state.dailyGoal.toLocaleString()}/day  ×  ${days} days`;
+
+    // Current month
+    let currentTotal = 0, dailySales = {};
+    if (state.currentMonthData) {
+        state.currentMonthData.rows.forEach(row => {
+            const amount = parseFloat(row['Total sales']) || 0;
+            currentTotal += amount;
+            const day = row['Day'];
+            if (day) { dailySales[day] = (dailySales[day] || 0) + amount; }
+        });
+    }
+    document.getElementById('currentLabel').textContent = `This Month — ${monthName} ${y}`;
+    document.getElementById('currentValue').textContent = fmtFull(currentTotal);
+    const pct = goal > 0 ? (currentTotal / goal * 100) : 0;
+    const orders = state.currentMonthData ? state.currentMonthData.rows.length : 0;
+    let detailHTML = `${orders.toLocaleString()} orders`;
+    detailHTML += pct >= 100
+        ? ` <span class="kpi-badge badge-green">Goal reached!</span>`
+        : ` <span class="kpi-badge badge-blue">${pct.toFixed(1)}% of goal</span>`;
+    document.getElementById('currentDetail').innerHTML = detailHTML;
+
+    // Last year
+    let lastYearTotal = 0, lastYearOrders = 0;
+    if (state.lastYearData) {
+        const target = `${y-1}-${String(m).padStart(2,'0')}-01`;
+        state.lastYearData.rows.forEach(row => {
+            if (row['Month'] === target) { lastYearTotal += parseFloat(row['Total sales']) || 0; lastYearOrders++; }
+        });
+    }
+    document.getElementById('lastYearLabel').textContent = `Same Month Last Year — ${monthName} ${y-1}`;
+    document.getElementById('lastYearValue').textContent = fmtFull(lastYearTotal);
+    if (lastYearTotal > 0) {
+        const yoyPct = ((currentTotal - lastYearTotal) / lastYearTotal * 100);
+        const cls = yoyPct >= 0 ? 'badge-green' : 'badge-red';
+        const sign = yoyPct >= 0 ? '+' : '';
+        document.getElementById('lastYearDetail').innerHTML = `${lastYearOrders.toLocaleString()} orders <span class="kpi-badge ${cls}">${sign}${yoyPct.toFixed(1)}% YoY</span>`;
+    } else {
+        document.getElementById('lastYearDetail').textContent = 'No data for this period';
+    }
+
+    // Progress
+    const cappedPct = Math.min(pct, 100);
+    document.getElementById('progressPct').textContent = pct.toFixed(1) + '%';
+    document.getElementById('progressBar').style.width = cappedPct + '%';
+    document.getElementById('progressBar').style.background =
+        pct >= 100 ? 'linear-gradient(90deg, #22c55e, #10b981)' :
+        pct >= 60 ? 'linear-gradient(90deg, #3b82f6, #6366f1)' :
+        'linear-gradient(90deg, #f97316, #eab308)';
+    document.getElementById('goalMarker').textContent = 'Goal: ' + fmtFull(goal);
+
+    renderDailyChart(dailySales);
+}
+
+// ===== DAILY CHART =====
+function renderDailyChart(dailySales) {
+    const sortedDays = Object.keys(dailySales).sort();
+    const labels = sortedDays.map(d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    const data = sortedDays.map(d => dailySales[d]);
+    let cumulative = [], rt = 0;
+    data.forEach(v => { rt += v; cumulative.push(rt); });
+    const goalLine = sortedDays.map((_, i) => state.dailyGoal * (i + 1));
+
+    const ctx = document.getElementById('dailyChart').getContext('2d');
+    if (dailyChart) dailyChart.destroy();
+    Chart.defaults.color = '#94a3b8';
+
+    dailyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { type: 'bar', label: 'Daily Sales', data, backgroundColor: 'rgba(34,197,94,0.5)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 4, order: 2 },
+                { type: 'line', label: 'Cumulative', data: cumulative, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 2, yAxisID: 'y1', order: 1 },
+                { type: 'line', label: 'Goal Pace', data: goalLine, borderColor: '#64748b', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, fill: false, yAxisID: 'y1', order: 0 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { usePointStyle: true, padding: 14, color: '#94a3b8' } },
+                tooltip: {
+                    backgroundColor: '#1e293b', borderColor: '#334155', borderWidth: 1,
+                    titleColor: '#f1f5f9', bodyColor: '#cbd5e1', padding: 12,
+                    callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 }) }
+                }
+            },
+            scales: {
+                x: { grid: { color: '#1e293b' }, ticks: { maxRotation: 45 } },
+                y: { grid: { color: '#1e293b' }, ticks: { callback: v => fmt(v) }, title: { display: true, text: 'Daily', color: '#64748b' } },
+                y1: { position: 'right', grid: { display: false }, ticks: { callback: v => fmt(v) }, title: { display: true, text: 'Cumulative', color: '#64748b' } }
+            }
+        }
+    });
+}
+
+// ===== SETTINGS WITH LOCALSTORAGE =====
+const STORAGE_KEY = 'utp_dashboard_settings';
+
+function loadSavedSettings() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            const s = JSON.parse(saved);
+            if (s.currentMonthURL) CONFIG.currentMonthURL = s.currentMonthURL;
+            if (s.lastYearURL) CONFIG.lastYearURL = s.lastYearURL;
+            if (s.dailyGoal) { CONFIG.dailyGoal = s.dailyGoal; state.dailyGoal = s.dailyGoal; }
+            if (s.currentMonth) { CONFIG.currentMonth = s.currentMonth; state.currentMonth = s.currentMonth; }
+            if (s.currentYear) { CONFIG.currentYear = s.currentYear; state.currentYear = s.currentYear; }
+            if (s.autoRefreshMinutes !== undefined) CONFIG.autoRefreshMinutes = s.autoRefreshMinutes;
+        }
+    } catch(e) {}
+}
+
+function persistSettings() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            currentMonthURL: CONFIG.currentMonthURL,
+            lastYearURL: CONFIG.lastYearURL,
+            dailyGoal: CONFIG.dailyGoal,
+            currentMonth: CONFIG.currentMonth,
+            currentYear: CONFIG.currentYear,
+            autoRefreshMinutes: CONFIG.autoRefreshMinutes,
+        }));
+    } catch(e) {}
+}
+
+function openSettings() {
+    document.getElementById('settingCurrentURL').value = CONFIG.currentMonthURL || '';
+    document.getElementById('settingLastYearURL').value = CONFIG.lastYearURL || '';
+    document.getElementById('settingGoal').value = state.dailyGoal;
+    document.getElementById('settingMonth').value = state.currentMonth;
+    document.getElementById('settingYear').value = state.currentYear;
+    document.getElementById('settingRefresh').value = CONFIG.autoRefreshMinutes || 5;
+    document.getElementById('settingsModal').classList.add('active');
+}
+function closeSettings() { document.getElementById('settingsModal').classList.remove('active'); }
+function saveSettings() {
+    CONFIG.currentMonthURL = document.getElementById('settingCurrentURL').value.trim();
+    CONFIG.lastYearURL = document.getElementById('settingLastYearURL').value.trim();
+    state.dailyGoal = parseInt(document.getElementById('settingGoal').value) || 1000;
+    CONFIG.dailyGoal = state.dailyGoal;
+    state.currentMonth = parseInt(document.getElementById('settingMonth').value) || (new Date().getMonth() + 1);
+    CONFIG.currentMonth = state.currentMonth;
+    state.currentYear = parseInt(document.getElementById('settingYear').value) || new Date().getFullYear();
+    CONFIG.currentYear = state.currentYear;
+    CONFIG.autoRefreshMinutes = parseInt(document.getElementById('settingRefresh').value) || 0;
+
+    persistSettings();
+    closeSettings();
+    setupAutoRefresh();
+    fetchFromSheets();
+    showToast('Settings saved!');
+}
+
+// ===== AUTO-REFRESH =====
+function setupAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    if (CONFIG.autoRefreshMinutes > 0) {
+        refreshTimer = setInterval(() => fetchFromSheets(), CONFIG.autoRefreshMinutes * 60 * 1000);
+    }
+}
+
+// ===== TOAST =====
+function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? '#ef4444' : '#22c55e';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded', () => {
+    loadSavedSettings();
+    setupAutoRefresh();
+    if (CONFIG.currentMonthURL || CONFIG.lastYearURL) {
+        fetchFromSheets();
+    } else {
+        showSetupNeeded();
+    }
+});
+</script>
+</body>
+</html>
